@@ -1,5 +1,5 @@
 import express from "express";
-import puppeteer from "puppeteer";
+import puppeteer from "puppeteer"; // ⚠️ full Puppeteer, not puppeteer-core
 
 const app = express();
 app.use(express.json());
@@ -8,11 +8,10 @@ app.use(express.static("public"));
 let browser;
 const tabs = {}; // { tabId: { page, url, history, historyIndex } }
 
-// Launch Puppeteer with cloud-friendly options
 async function launchBrowser() {
   if (!browser) {
     browser = await puppeteer.launch({
-      headless: "new", // cloud-friendly headless mode
+      headless: "new",
       args: ["--no-sandbox", "--disable-setuid-sandbox"]
     });
     console.log("🚀 Puppeteer browser launched!");
