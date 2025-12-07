@@ -6,10 +6,17 @@ app.use(express.json());
 app.use(express.static("public"));
 
 let browser;
-const tabs = {}; // { tabId: { page, url, history: [], historyIndex } }
+const tabs = {}; // { tabId: { page, url, history, historyIndex } }
 
+// Launch Puppeteer with cloud-friendly options
 async function launchBrowser() {
-  if (!browser) browser = await puppeteer.launch({ headless: true });
+  if (!browser) {
+    browser = await puppeteer.launch({
+      headless: "new", // cloud-friendly headless mode
+      args: ["--no-sandbox", "--disable-setuid-sandbox"]
+    });
+    console.log("🚀 Puppeteer browser launched!");
+  }
 }
 launchBrowser();
 
@@ -32,10 +39,10 @@ app.get("/navigate", async (req, res) => {
     tab.url = url;
 
     // Update history
-    if(tab.historyIndex === -1 || tab.history[tab.historyIndex] !== url){
+    if (tab.historyIndex === -1 || tab.history[tab.historyIndex] !== url) {
       tab.history = tab.history.slice(0, tab.historyIndex + 1);
       tab.history.push(url);
-      tab.historyIndex = tab.history.length -1;
+      tab.historyIndex = tab.history.length - 1;
     }
 
     const content = await tab.page.content();
@@ -43,13 +50,13 @@ app.get("/navigate", async (req, res) => {
     let favicon = null;
     try {
       const f = await tab.page.$("link[rel~='icon']");
-      if(f) favicon = await tab.page.evaluate(el => el.href, f);
-    } catch(e){}
+      if (f) favicon = await tab.page.evaluate(el => el.href, f);
+    } catch (e) {}
 
     res.json({ html: content, title, favicon });
   } catch (e) {
     console.error(e);
-    res.status(500).send("Failed to load page");
+    res.status(500).send("Failed to load page: " + e.message);
   }
 });
 
@@ -58,7 +65,7 @@ app.get("/go-back", async (req, res) => {
   const { tabId } = req.query;
   if (!tabs[tabId]) return res.status(404).send("Tab not found");
   const tab = tabs[tabId];
-  if(tab.historyIndex > 0){
+  if (tab.historyIndex > 0) {
     tab.historyIndex--;
     await tab.page.goto(tab.history[tab.historyIndex], { waitUntil: "networkidle2" });
     res.send("ok");
@@ -69,7 +76,7 @@ app.get("/go-forward", async (req, res) => {
   const { tabId } = req.query;
   if (!tabs[tabId]) return res.status(404).send("Tab not found");
   const tab = tabs[tabId];
-  if(tab.historyIndex < tab.history.length -1){
+  if (tab.historyIndex < tab.history.length - 1) {
     tab.historyIndex++;
     await tab.page.goto(tab.history[tab.historyIndex], { waitUntil: "networkidle2" });
     res.send("ok");
